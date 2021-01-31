@@ -7,3 +7,4 @@ apt_packages:
   - curl
   - gnupg-agent
   - software-properties-common
+  - debian-keyring

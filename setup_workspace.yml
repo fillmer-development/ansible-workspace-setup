@@ -4,30 +4,77 @@
   remote_user: root
   roles:
     - apt
+  connection: local
 
+  vars_prompt:
+  - name: git_username
+    prompt: '[Git] Set name'
+    private: no
+  - name: email
+    prompt: '[Git] Set email'
+    private: no
+  - name: timeout
+    prompt: '[Git] Set password timeout'
+    private: no
+
+  become: true
   tasks:
+    - name: Determine local username.
+      become: false
+      local_action: command whoami
+      register: local_username
+
     - name: Run apt update
       apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+
+    - name: '[Git] Set username'
+      become: false
+      git_config:
+        name: user.name
+        scope: global
+        value: '{{git_username}}'
+    - name: '[Git] Set email'
+      become: false
+      git_config:
+        name: user.email
+        scope: global
+        value: '{{email}}'
+    - name: '[Git] Set password timeout'
+      become: false
+      shell:
+        cmd: git config --global credential.helper cache && git config --global credential.helper 'cache --timeout={{timeout}}'
+
 
     - name: Get default packages
       apt:
         name: "{{apt_packages}}"
         state: present
 
-    - name: Add Docker GPG apt Key
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
-
-    - name: Add Docker Repository
-      apt_repository:
-        repo: deb https://download.docker.com/linux/ubuntu bionic stable
-        state: present
-
-    - name: Update apt and install docker-ce
-      apt: update_cache=yes name=docker-ce state=latest
-
     - name: Install Visual Studio Code
-      snap:
-        name: code
-        classic: yes
+      apt: 
+        deb: http://go.microsoft.com/fwlink/?LinkID=760868
+    - name: '[Docker] Add Docker GPG key'
+      apt_key:
+        url: https://download.docker.com/linux/debian/gpg
+        id: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+    - name: '[Docker] Add Docker repository'
+      apt_repository:
+        repo: deb https://download.docker.com/linux/debian stretch stable
+        filename: docker
+        update_cache: no
+    - name: '[Docker] Install Docker'
+      apt: update_cache=yes name=docker-ce
+    - name: '[Docker] Create docker group.'
+      group:
+        name: docker
+        state: present
+    - name: '[Docker] Add user to docker group.'
+      user:
+        name: '{{local_username.stdout}}'
+        groups: docker
+    - name: '[Docker] Install Docker Compose'
+      get_url:
+        url: https://github.com/docker/compose/releases/download/1.24.1/docker-compose-Linux-x86_64
+        checksum: sha256:cfb3439956216b1248308141f7193776fcf4b9c9b49cbbe2fb07885678e2bb8a
+        mode: 0755
+        dest: /usr/local/bin/docker-compose
