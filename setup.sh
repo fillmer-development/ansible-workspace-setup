@@ -10,7 +10,6 @@ sudo apt update && sudo apt install -y ansible
 
 # Clone repository
 git clone https://github.com/fillmer-development/ansible-workspace-setup.git 
-cd ansible-workspace-setup
 
 # Run playbook
-ansible-playbook playbook.yml
+ansible-playbook ansible-workspace-setup/setup_workspace.yml
